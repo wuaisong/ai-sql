@@ -142,29 +142,141 @@ class CacheService:
         self._memory_cache.clear()
         return True
     
-    def get_query_cache_key(self, sql: str, datasource_id: str) -> str:
-        """生成查询缓存键"""
-        return self._generate_key("query", datasource_id, sql)
+    def get_query_cache_key(
+        self, 
+        sql: str, 
+        datasource_id: str, 
+        params: Optional[Dict] = None,
+        limit: Optional[int] = None,
+        offset: Optional[int] = None
+    ) -> str:
+        """
+        生成查询缓存键（包含参数和分页信息）
+        
+        Args:
+            sql: SQL 语句
+            datasource_id: 数据源ID
+            params: 查询参数
+            limit: 限制行数
+            offset: 偏移量
+            
+        Returns:
+            缓存键
+        """
+        import json
+        
+        # 规范化 SQL（去除多余空格和换行）
+        sql_normalized = ' '.join(sql.strip().split())
+        
+        # 构建缓存数据
+        cache_data = {
+            'sql': sql_normalized,
+            'datasource_id': datasource_id,
+            'params': params or {},
+            'limit': limit,
+            'offset': offset
+        }
+        
+        # 生成 JSON 并排序键以确保一致性
+        cache_json = json.dumps(cache_data, sort_keys=True, default=str)
+        return self._generate_key("query", cache_json)
     
     def cache_query_result(
         self, 
         sql: str, 
         datasource_id: str, 
         result: Dict[str, Any],
+        params: Optional[Dict] = None,
+        limit: Optional[int] = None,
+        offset: Optional[int] = None,
         expire: int = None
     ) -> bool:
-        """缓存查询结果"""
-        key = self.get_query_cache_key(sql, datasource_id)
-        return self.set(key, result, expire)
+        """
+        缓存查询结果
+        
+        Args:
+            sql: SQL 语句
+            datasource_id: 数据源ID
+            result: 查询结果
+            params: 查询参数
+            limit: 限制行数
+            offset: 偏移量
+            expire: 过期时间（秒）
+            
+        Returns:
+            是否成功
+        """
+        key = self.get_query_cache_key(sql, datasource_id, params, limit, offset)
+        
+        # 添加缓存元数据
+        cached_result = {
+            'data': result,
+            'cached_at': time.time(),
+            'expire_at': time.time() + (expire or settings.CACHE_EXPIRE_SECONDS),
+            'key': key,
+            'datasource_id': datasource_id,
+            'sql_hash': hashlib.md5(sql.encode()).hexdigest()[:16]
+        }
+        
+        return self.set(key, cached_result, expire)
     
     def get_cached_query(
         self, 
         sql: str, 
-        datasource_id: str
+        datasource_id: str,
+        params: Optional[Dict] = None,
+        limit: Optional[int] = None,
+        offset: Optional[int] = None
     ) -> Optional[Dict[str, Any]]:
-        """获取缓存的查询结果"""
-        key = self.get_query_cache_key(sql, datasource_id)
-        return self.get(key)
+        """
+        获取缓存的查询结果
+        
+        Args:
+            sql: SQL 语句
+            datasource_id: 数据源ID
+            params: 查询参数
+            limit: 限制行数
+            offset: 偏移量
+            
+        Returns:
+            缓存结果（不存在返回 None）
+        """
+        key = self.get_query_cache_key(sql, datasource_id, params, limit, offset)
+        cached = self.get(key)
+        
+        if cached and 'data' in cached:
+            return cached['data']
+        
+        return None
+    
+    def get_cache_info(self, key: str) -> Optional[Dict[str, Any]]:
+        """
+        获取缓存信息
+        
+        Args:
+            key: 缓存键
+            
+        Returns:
+            缓存信息
+        """
+        cached = self.get(key)
+        if not cached:
+            return None
+        
+        info = {
+            'key': key,
+            'cached_at': cached.get('cached_at'),
+            'expire_at': cached.get('expire_at'),
+            'size': len(str(cached).encode('utf-8')),
+            'datasource_id': cached.get('datasource_id'),
+            'sql_hash': cached.get('sql_hash')
+        }
+        
+        # 计算剩余时间
+        if info['expire_at']:
+            info['ttl_seconds'] = max(0, info['expire_at'] - time.time())
+        
+        return info
     
     def invalidate_query_cache(self, datasource_id: str) -> bool:
         """使数据源的查询缓存失效"""

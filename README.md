@@ -2,6 +2,230 @@
 
 基于 DeepAgents 的企业级自然语言数据查询系统，支持将自然语言转换为 SQL 查询，提供安全、高效、智能的数据访问能力。
 
+## 🎯 特性亮点
+
+### 🤖 智能查询
+- **自然语言转 SQL** - 使用 AI 理解用户意图
+- **多数据源支持** - MySQL、PostgreSQL、Oracle、SQLite
+- **查询优化** - 自动优化和索引建议
+
+### 🔒 企业级安全
+- **权限控制** - 基于角色的访问控制
+- **审计日志** - 完整的操作记录
+- **SQL 防护** - 多层安全检测和拦截
+
+### 🚀 高性能
+- **连接池** - 数据库连接复用
+- **智能缓存** - Redis/内存多级缓存
+- **异步处理** - 高性能 I/O 操作
+
+### 📊 可观测性
+- **实时监控** - 系统指标和性能数据
+- **健康检查** - 自动服务状态检测
+- **详细日志** - 结构化日志记录
+
+## 🚀 快速部署
+
+### 使用 Docker Compose（推荐）
+```bash
+# 1. 克隆项目
+git clone <repository-url>
+cd enterprise-data-query
+
+# 2. 一键部署
+./deploy.sh init
+./deploy.sh start
+
+# 3. 访问应用
+# http://localhost:8000
+# API 文档: http://localhost:8000/docs
+```
+
+### 手动部署
+```bash
+# 1. 安装依赖
+pip install -r requirements.txt
+
+# 2. 配置环境
+cp .env.example .env
+# 编辑 .env 文件
+
+# 3. 启动服务
+./start.sh dev
+```
+
+### 生产环境部署
+```bash
+# 使用生产配置
+docker-compose -f docker-compose.yml --env-file .env.production up -d
+
+# 详细部署指南请查看 DEPLOYMENT.md
+```
+
+## 📋 系统要求
+
+| 环境 | 最低配置 | 推荐配置 |
+|------|----------|----------|
+| 开发环境 | 2核 CPU, 4GB 内存 | 4核 CPU, 8GB 内存 |
+| 生产环境 | 4核 CPU, 8GB 内存 | 8核 CPU, 16GB 内存 |
+| 存储 | 10GB SSD | 50GB SSD |
+| 网络 | 100Mbps | 1Gbps |
+
+## 🔧 核心功能
+
+### 1. 智能查询处理
+- 自然语言理解
+- SQL 生成和验证
+- 查询优化建议
+- 多表关联支持
+
+### 2. 数据源管理
+- 多数据库支持
+- 连接池管理
+- Schema 自动发现
+- 连接测试和监控
+
+### 3. 用户和权限
+- 多角色支持（管理员、分析师、访客）
+- 细粒度权限控制
+- 配额管理
+- 审计日志
+
+### 4. 监控和运维
+- 实时系统指标
+- 健康检查
+- 日志聚合
+- 备份和恢复
+
+## 📡 API 接口示例
+
+### 用户认证
+```bash
+curl -X POST http://localhost:8000/api/v1/auth/login \n  -H "Content-Type: application/json" \n  -d '{"username": "admin", "password": "admin123"}'
+```
+
+### 执行查询
+```bash
+curl -X POST http://localhost:8000/api/v1/query \n  -H "Authorization: Bearer <token>" \n  -H "Content-Type: application/json" \n  -d '{
+    "natural_query": "统计最近30天的销售趋势",
+    "datasource_id": "demo_mysql",
+    "use_cache": true
+  }'
+```
+
+### 系统监控
+```bash
+curl http://localhost:8000/api/v1/system/health
+curl http://localhost:8000/api/v1/system/metrics
+```
+
+## 🐳 Docker 服务架构
+
+```
+企业级问数系统
+├── app (主应用)        :8000     # FastAPI 应用
+├── redis (缓存)        :6379     # Redis 缓存服务
+├── mysql-demo (示例)   :3306     # MySQL 示例数据库
+├── postgres-demo (示例):5432     # PostgreSQL 示例数据库
+└── nginx (反向代理)    :80/443   # 生产环境反向代理
+```
+
+## 🔄 更新和维护
+
+### 日常维护
+```bash
+# 查看服务状态
+./deploy.sh status
+
+# 查看日志
+./deploy.sh logs app
+
+# 备份数据
+./deploy.sh backup
+```
+
+### 版本升级
+```bash
+# 1. 备份当前版本
+./deploy.sh backup
+
+# 2. 更新代码
+git pull origin main
+
+# 3. 重启服务
+./deploy.sh restart
+```
+
+## 🚨 故障排除
+
+### 常见问题
+1. **端口冲突** - 修改 .env 中的 PORT 设置
+2. **内存不足** - 增加 Docker 内存限制
+3. **连接失败** - 检查数据库配置和网络
+4. **权限问题** - 检查文件权限和用户配置
+
+### 获取帮助
+- 查看 [API 文档](http://localhost:8000/docs)
+- 检查系统日志 (`logs/` 目录)
+- 查阅 [DEPLOYMENT.md](DEPLOYMENT.md)
+- 提交 Issue 获取支持
+
+## 📈 性能优化建议
+
+### 数据库优化
+```sql
+-- 为常用查询字段添加索引
+CREATE INDEX idx_users_created ON users(created_at);
+CREATE INDEX idx_orders_date ON orders(order_date);
+```
+
+### 缓存策略
+```python
+# 调整缓存时间
+CACHE_EXPIRE_SECONDS = 600      # 查询缓存10分钟
+SCHEMA_CACHE_TTL = 3600         # Schema缓存1小时
+```
+
+### 连接池配置
+```python
+# 增加连接池大小
+CONNECTION_POOL_MAX_SIZE = 50
+CONNECTION_POOL_IDLE_TIMEOUT = 300
+```
+
+## 🔐 安全最佳实践
+
+### 生产环境配置
+1. **使用强密码** - 设置复杂的 SECRET_KEY 和数据库密码
+2. **启用 HTTPS** - 配置 SSL 证书
+3. **限制访问** - 配置防火墙和 CORS
+4. **定期备份** - 实施自动化备份策略
+
+### 监控和告警
+1. **健康检查** - 设置定期健康检查
+2. **日志监控** - 监控异常日志
+3. **性能告警** - 设置性能阈值告警
+4. **安全扫描** - 定期进行安全扫描
+
+## 🤝 贡献指南
+
+欢迎贡献代码！请查看 [CONTRIBUTING.md](CONTRIBUTING.md) 了解详情。
+
+## 📄 许可证
+
+MIT License - 详见 [LICENSE](LICENSE) 文件
+
+---
+
+**开始使用**
+- 🐳 [Docker 部署指南](DEPLOYMENT.md#docker-部署)
+- 🏗️ [生产环境部署](DEPLOYMENT.md#生产环境部署)
+- 🔧 [配置说明](DEPLOYMENT.md#配置说明)
+- 📊 [监控和维护](DEPLOYMENT.md#监控和维护)
+
+**需要帮助？**
+- 📖
+
 ## 🏗️ 系统架构
 
 ```
@@ -298,14 +522,56 @@ audit_logger.log_query(
 )
 ```
 
-## 📡 API 接口
+## 🚀 快速开始
+
+### 环境要求
+- Python 3.9+
+- Redis 5.0+ (可选，用于缓存)
+- MySQL/PostgreSQL (数据源，可选)
+
+### 安装依赖
+```bash
+# 克隆项目
+git clone <repository-url>
+cd enterprise-data-query
+
+# 安装 Python 依赖
+pip install -r requirements.txt
+```
+
+### 配置环境
+```bash
+# 复制环境文件
+cp .env.example .env
+
+# 编辑配置文件
+# 设置 SECRET_KEY、DEEPAGENTS_API_KEY 等
+```
+
+### 初始化数据库
+```bash
+# 创建数据库表
+python migrations.py create
+
+# 创建示例数据（可选）
+python migrations.py seed
+```
 
 ### 启动服务
 ```bash
-cd enterprise-data-query
-pip install -r requirements.txt
+# 开发模式（热重载）
+./start.sh dev
+
+# 或直接运行
 python main.py
 ```
+
+### 访问应用
+- 应用地址: http://localhost:8000
+- API 文档: http://localhost:8000/docs
+- 健康检查: http://localhost:8000/api/v1/system/health
+
+## 📡 API 接口
 
 ### API 端点
 
@@ -389,8 +655,443 @@ QUERY_TIMEOUT_SECONDS=60
 pytest tests/ -v
 ```
 
-## 📝 许可证
+## 🐳 Docker 部署
+
+### 使用 Docker Compose（推荐）
+
+```bash
+# 1. 初始化部署环境
+./deploy.sh init
+
+# 2. 启动所有服务
+./deploy.sh start
+
+# 3. 查看服务状态
+./deploy.sh status
+
+# 4. 查看日志
+./deploy.sh logs app
+```
+
+### 服务说明
+- **app**: 主应用服务 (端口: 8000)
+- **redis**: Redis 缓存服务 (端口: 6379)
+- **mysql-demo**: MySQL 示例数据库 (端口: 3306，可选)
+- **postgres-demo**: PostgreSQL 示例数据库 (端口: 5432，可选)
+- **nginx**: 反向代理 (端口: 80/443，生产环境)
+
+### 环境变量配置
+创建 `.env` 文件：
+```env
+# 应用配置
+DEBUG=false
+SECRET_KEY=必须设置32位以上随机字符串
+
+# DeepAgents 配置
+DEEPAGENTS_API_KEY=您的API密钥
+
+# Redis 配置
+REDIS_PASSWORD=强密码
+
+# 数据库配置
+MYSQL_ROOT_PASSWORD=root
+POSTGRES_PASSWORD=postgres
+```
+
+### 生成安全密钥
+```bash
+# 生成 SECRET_KEY
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+
+# 生成 Redis 密码
+python -c "import secrets; print(secrets.token_urlsafe(16))"
+```
+
+## 🏗️ 生产环境部署
+
+### 1. 准备工作
+```bash
+# 克隆代码
+git clone <repository-url>
+cd enterprise-data-query
+
+# 切换到生产分支
+git checkout main
+
+# 创建生产环境配置
+cp .env.production .env
+# 编辑 .env 文件，设置所有必要的配置
+```
+
+### 2. 使用 Docker Compose 部署
+```bash
+# 使用生产配置启动
+docker-compose -f docker-compose.yml --env-file .env up -d
+
+# 查看服务状态
+docker-compose ps
+
+# 查看应用日志
+docker-compose logs -f app
+```
+
+### 3. 数据库迁移
+```bash
+# 进入容器执行迁移
+docker-compose exec app python migrations.py create
+
+# 创建管理员用户（可选）
+docker-compose exec app python -c "
+from services.auth import pwd_context
+from models.database import get_db, User
+import uuid
+
+db = get_db()
+user = User(
+    id=str(uuid.uuid4()),
+    username='admin',
+    email='admin@example.com',
+    hashed_password=pwd_context.hash('Admin@123'),
+    role='admin'
+)
+db.add(user)
+db.commit()
+print('管理员用户创建成功')
+"
+```
+
+### 4. 配置反向代理（Nginx）
+```bash
+# 生成 SSL 证书（生产环境）
+mkdir -p ssl
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+  -keyout ssl/key.pem -out ssl/cert.pem \
+  -subj "/C=CN/ST=Beijing/L=Beijing/O=Company/CN=yourdomain.com"
+
+# 启动 Nginx
+docker-compose up -d nginx
+```
+
+### 5. 监控和维护
+```bash
+# 健康检查
+curl https://yourdomain.com/api/v1/system/health
+
+# 系统指标
+curl https://yourdomain.com/api/v1/system/metrics
+
+# 备份数据
+./deploy.sh backup
+
+# 重启服务
+./deploy.sh restart
+```
+
+## 🔧 高级配置
+
+### 自定义数据源连接
+```yaml
+# 在 docker-compose.yml 中添加自定义数据源
+services:
+  custom-mysql:
+    image: mysql:8
+    environment:
+      MYSQL_ROOT_PASSWORD: custom_password
+      MYSQL_DATABASE: business_data
+    volumes:
+      - mysql_business_data:/var/lib/mysql
+    ports:
+      - "3307:3306"
+```
+
+### 配置持久化存储
+```yaml
+# 在 docker-compose.yml 中配置卷
+volumes:
+  app_data:
+    driver: local
+    driver_opts:
+      type: none
+      device: /path/to/persistent/storage
+      o: bind
+```
+
+### 设置资源限制
+```yaml
+services:
+  app:
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          cpus: '1'
+          memory: 2G
+```
+
+## 📊 监控和日志
+
+### 内置监控端点
+- `/api/v1/system/health` - 健康检查
+- `/api/v1/system/metrics` - 系统指标
+- `/api/v1/system/info` - 系统信息
+
+### 日志文件
+```
+logs/
+├── app.log          # 应用日志
+├── audit.log        # 审计日志
+├── access.log       # Nginx 访问日志
+└── error.log        # 错误日志
+```
+
+### 集成外部监控
+```yaml
+# Prometheus 配置
+services:
+  prometheus:
+    image: prom/prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana
+    volumes:
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+```
+
+## 🔄 备份和恢复
+
+### 自动备份
+```bash
+# 使用内置备份脚本
+./deploy.sh backup
+
+# 或设置定时任务
+crontab -e
+# 添加以下行（每天凌晨2点备份）
+0 2 * * * cd /path/to/enterprise-data-query && ./deploy.sh backup
+```
+
+### 手动备份
+```bash
+# 备份数据库
+docker-compose exec mysql-demo mysqldump -u root -proot test > backup.sql
+
+# 备份应用数据
+tar -czf backup_$(date +%Y%m%d_%H%M%S).tar.gz data/ logs/ .env
+```
+
+### 恢复数据
+```bash
+# 恢复数据库
+docker-compose exec -T mysql-demo mysql -u root -proot test < backup.sql
+
+# 恢复应用数据
+tar -xzf backup.tar.gz
+```
+
+## 🚨 故障排除
+
+### 常见问题
+
+#### 1. 应用启动失败
+```bash
+# 检查日志
+docker-compose logs app
+
+# 常见原因：
+# - 环境变量未设置
+# - 端口被占用
+# - 依赖服务未启动
+```
+
+#### 2. 数据库连接失败
+```bash
+# 测试数据库连接
+docker-compose exec app python -c "
+import mysql.connector
+try:
+    conn = mysql.connector.connect(
+        host='mysql-demo',
+        user='root',
+        password='root'
+    )
+    print('连接成功')
+except Exception as e:
+    print(f'连接失败: {e}')
+"
+```
+
+#### 3. Redis 连接失败
+```bash
+# 检查 Redis 状态
+docker-compose exec redis redis-cli ping
+```
+
+#### 4. API 响应慢
+```bash
+# 检查系统指标
+curl http://localhost:8000/api/v1/system/metrics
+
+# 优化建议：
+# - 增加连接池大小
+# - 启用查询缓存
+# - 优化数据库索引
+```
+
+### 调试模式
+```bash
+# 启用调试模式
+export DEBUG=true
+export LOG_LEVEL=DEBUG
+
+# 重新启动服务
+docker-compose restart app
+```
+
+## 📈 性能优化建议
+
+### 1. 数据库优化
+```sql
+-- 为常用查询字段添加索引
+CREATE INDEX idx_users_created ON users(created_at);
+CREATE INDEX idx_orders_user_date ON orders(user_id, order_date);
+```
+
+### 2. 缓存策略
+```python
+# 配置缓存过期时间
+CACHE_EXPIRE_SECONDS = 300  # 5分钟
+QUERY_CACHE_TTL = 3600      # 1小时（频繁查询）
+```
+
+### 3. 连接池配置
+```python
+# 调整连接池大小
+CONNECTION_POOL_MAX_SIZE = 50      # 最大连接数
+CONNECTION_POOL_IDLE_TIMEOUT = 600 # 空闲超时（秒）
+```
+
+### 4. 查询优化
+```python
+# 启用查询限制
+MAX_QUERY_ROWS = 10000      # 单次查询最大行数
+QUERY_TIMEOUT_SECONDS = 60  # 查询超时时间
+```
+
+## 🔐 安全最佳实践
+
+### 1. 生产环境配置
+- 使用强密码和密钥
+- 禁用调试模式
+- 配置 HTTPS
+- 限制 CORS 域名
+
+### 2. 访问控制
+- 使用最小权限原则
+- 定期轮换密钥
+- 启用审计日志
+- 实施速率限制
+
+### 3. 数据保护
+- 加密敏感数据
+- 定期备份
+- 监控异常访问
+- 实施数据脱敏
+
+## 🤝 贡献指南
+
+### 开发流程
+```bash
+# 1. 创建开发分支
+git checkout -b feature/your-feature
+
+# 2. 运行测试
+./start.sh test
+
+# 3. 代码检查
+./start.sh lint
+
+# 4. 提交更改
+git add .
+git commit -m "feat: add your feature"
+
+# 5. 推送分支
+git push origin feature/your-feature
+```
+
+### 代码规范
+- 遵循 PEP 8 规范
+- 使用类型注解
+- 编写单元测试
+- 更新文档
+
+### 提交信息格式
+```
+类型(范围): 描述
+
+详细说明（可选）
+
+BREAKING CHANGE: 重大变更说明（可选）
+```
+
+类型包括：
+- `feat`: 新功能
+- `fix`: 修复 bug
+- `docs`: 文档更新
+- `style`: 代码格式
+- `refactor`: 重构
+- `test`: 测试相关
+- `chore`: 构建/工具
+
+## 📞 支持
+
+### 获取帮助
+- 查看 [API 文档](http://localhost:8000/docs)
+- 检查 [系统日志](logs/)
+- 查阅 [问题跟踪](issues/)
+
+### 报告问题
+```bash
+# 收集系统信息
+curl http://localhost:8000/api/v1/system/info > system_info.json
+
+# 包含以下信息：
+# 1. 系统版本
+# 2. 错误日志
+# 3. 复现步骤
+# 4. 期望行为
+```
+
+## 📝 更新日志
+
+### v1.0.0 (2024-01-01)
+- ✅ 初始版本发布
+- ✅ 支持自然语言查询
+- ✅ 多数据源连接
+- ✅ 完整的 API 接口
+- ✅ Docker 容器化部署
+
+## 📄 许可证
 
 MIT License
-#   a i - s q l  
- 
+
+Copyright (c) 2024 企业级问数系统
+
+## 🙏 致谢
+
+- [FastAPI](https://fastapi.tiangolo.com/) - 现代 Web 框架
+- [SQLAlchemy](https://www.sqlalchemy.org/) - Python SQL 工具包
+- [DeepAgents](https://deepagents.ai/) - AI 代理平台
+- 所有贡献者和用户
+
+---
+
+**企业级问数系统** - 让数据查询更智能、更安全、更高效 🚀

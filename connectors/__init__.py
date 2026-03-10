@@ -2,11 +2,11 @@
 from .base import BaseConnector
 from .mysql import MySQLConnector
 from .postgresql import PostgreSQLConnector
-
-# ClickHouse 连接器可以根据需要添加
+from .oracle import OracleConnector
 
 __all__ = [
     "BaseConnector",
-    "MySQLConnector", 
-    "PostgreSQLConnector"
+    "MySQLConnector",
+    "PostgreSQLConnector",
+    "OracleConnector"
 ]

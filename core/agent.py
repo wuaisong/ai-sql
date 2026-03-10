@@ -178,10 +178,26 @@ class DataQueryAgent:
             self.status = AgentStatus.ERROR
             raise
     
-    def set_schema_context(self, schema_info: Dict[str, Any]):
-        """设置数据库 schema 上下文"""
-        self.schema_context = schema_info
-        logger.debug(f"设置 schema 上下文：{len(schema_info.get('tables', {}))} 个表")
+    def set_schema_context(self, schema_info: Dict[str, Any], optimize: bool = True):
+        """
+        设置数据库 schema 上下文（带优化）
+        
+        Args:
+            schema_info: Schema 信息
+            optimize: 是否优化（减少 token）
+        """
+        if optimize:
+            from utils.token_optimizer import schema_optimizer
+            optimized_schema, token_usage = schema_optimizer.optimize_schema(
+                schema_info,
+                max_tables=20,
+                max_columns_per_table=15
+            )
+            self.schema_context = optimized_schema
+            logger.info(f"Schema 已优化：{len(optimized_schema.get('tables', {}))} 个表，使用 {token_usage.prompt_tokens} token")
+        else:
+            self.schema_context = schema_info
+            logger.debug(f"设置 schema 上下文：{len(schema_info.get('tables', {}))} 个表（未优化）")
     
     def _get_schema_info(self, table_name: Optional[str] = None) -> str:
         """获取 Schema 信息的工具"""

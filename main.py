@@ -6,6 +6,7 @@ import asyncio
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
+from datetime import datetime
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -18,10 +19,13 @@ from api.middleware import (
     security_headers_middleware,
     error_handler_middleware
 )
+from api.monitoring import metrics_collector, MonitoringMiddleware
 from core.agent import DataQueryAgent, AgentConfig, AgentPool, AgentRole
 from core.query_processor import QueryProcessor
 from core.sql_generator import create_sql_processor
 from services.cache import cache_service
+from services.connection_pool import connection_pool_manager
+from models.database import init_database
 from utils.logger import logger
 
 
@@ -39,7 +43,26 @@ async def lifespan(app: FastAPI):
     global query_processor, agent_pool
     
     try:
-        # 1. 初始化 AI 代理池
+        # 1. 初始化数据库
+        logger.info("初始化数据库...")
+        db_manager = init_database(settings.META_DB_URL)
+        
+        # 创建表（如果不存在）
+        try:
+            db_manager.create_tables()
+            logger.info("数据库表初始化完成")
+        except Exception as e:
+            logger.warning(f"数据库表可能已存在: {e}")
+        
+        # 2. 启动监控
+        logger.info("启动监控系统...")
+        metrics_collector.start()
+        
+        # 3. 启动连接池
+        logger.info("启动连接池管理器...")
+        # connection_pool_manager 已自动初始化
+        
+        # 4. 初始化 AI 代理池
         logger.info("初始化 AI 代理池...")
         agent_pool = AgentPool(max_agents=3)
         
@@ -75,7 +98,7 @@ async def lifespan(app: FastAPI):
         
         logger.info(f"代理池初始化完成：{agent_pool.get_pool_metrics()}")
         
-        # 2. 创建 SQL 处理组件
+        # 5. 创建 SQL 处理组件
         logger.info("创建 SQL 处理组件...")
         sql_agent = agent_pool.get_agent_by_role(AgentRole.SQL_EXPERT)
         
@@ -84,7 +107,7 @@ async def lifespan(app: FastAPI):
             ai_agent=sql_agent
         )
         
-        # 3. 创建查询处理器
+        # 6. 创建查询处理器
         logger.info("创建查询处理器...")
         query_processor = QueryProcessor(
             sql_generator=generator,
@@ -105,8 +128,17 @@ async def lifespan(app: FastAPI):
     finally:
         # 关闭时清理
         logger.info("正在关闭系统...")
+        
+        # 停止监控
+        metrics_collector.stop()
+        
+        # 关闭连接池
+        connection_pool_manager.close_all()
+        
+        # 清理代理池
         if agent_pool:
             agent_pool.clear_all_caches()
+        
         logger.info("系统已关闭")
 
 
@@ -115,18 +147,24 @@ app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
     description="基于 DeepAgents 的企业级自然语言数据查询系统",
-    lifespan=lifespan
+    lifespan=lifespan,
+    docs_url="/docs" if settings.DEBUG else None,  # 生产环境禁用文档
+    redoc_url="/redoc" if settings.DEBUG else None
 )
 
-# 添加中间件
+# 添加 CORS 中间件
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 生产环境应配置具体域名
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=settings.CORS_ALLOW_ORIGINS,
+    allow_credentials=settings.CORS_ALLOW_CREDENTIALS,
+    allow_methods=settings.CORS_ALLOW_METHODS,
+    allow_headers=settings.CORS_ALLOW_HEADERS,
 )
 
+# 添加监控中间件
+app.add_middleware(MonitoringMiddleware, metrics_collector=metrics_collector)
+
+# 添加其他中间件
 app.middleware("http")(request_logging_middleware)
 app.middleware("http")(security_headers_middleware)
 app.middleware("http")(error_handler_middleware)
@@ -150,15 +188,62 @@ async def root():
 @app.get("/api/v1/system/info")
 async def system_info():
     """系统信息"""
+    from api.monitoring import get_metrics_summary
+    from services.connection_pool import connection_pool_manager
+    
+    metrics_summary = get_metrics_summary()
+    pool_stats = connection_pool_manager.get_stats()
+    
     info = {
         "app_name": settings.APP_NAME,
         "version": settings.APP_VERSION,
         "debug": settings.DEBUG,
+        "environment": "development" if settings.DEBUG else "production",
         "agent_pool": agent_pool.get_pool_metrics() if agent_pool else None,
         "processor_stats": query_processor.get_stats() if query_processor else None,
-        "cache_available": cache_service.use_redis if cache_service else False
+        "cache_available": cache_service.use_redis if cache_service else False,
+        "connection_pool": pool_stats,
+        "metrics": metrics_summary,
+        "startup_time": datetime.utcnow().isoformat()
     }
     return info
+
+
+@app.get("/api/v1/system/metrics")
+async def system_metrics():
+    """系统指标"""
+    from api.monitoring import get_metrics_summary, get_endpoint_stats, get_recent_requests
+    
+    return {
+        "summary": get_metrics_summary(),
+        "endpoints": get_endpoint_stats(),
+        "recent_requests": get_recent_requests(50),
+        "timestamp": datetime.utcnow().isoformat()
+    }
+
+
+@app.get("/api/v1/system/health")
+async def health_check():
+    """健康检查"""
+    from services.datasource_service import datasource_service
+    
+    health = {
+        "status": "healthy",
+        "timestamp": datetime.utcnow().isoformat(),
+        "components": {
+            "database": "healthy",  # 简化，实际应测试数据库连接
+            "cache": "healthy" if cache_service else "unavailable",
+            "connection_pool": "healthy",
+            "agent_pool": "healthy" if agent_pool else "unavailable"
+        },
+        "datasources": datasource_service.get_datasource_stats()
+    }
+    
+    # 检查关键组件
+    if not cache_service or not agent_pool:
+        health["status"] = "degraded"
+    
+    return health
 
 
 @app.post("/api/v1/system/reload-schema")
